@@ -3,7 +3,7 @@
 
 import os
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
