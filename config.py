@@ -5,7 +5,6 @@ DEFAULT_DIR = ''
 INITIAL_URLS = ['http://www.globalsources.com/']
 
 SQLITE_DB = 'company_db.sqlite'
-TOKYO_CABINET_DB = '/root/pars/cache_globalsources.db'
 MYSQL_USER = 'grab'
 MYSQL_DATABASE = 'grab'
 MYSQL_PASSWORD = 'grab777'
