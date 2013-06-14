@@ -8,7 +8,9 @@ def corrector_globalsources(email_text):
     repl_mass = [
         (' ',''),
         ('—', '-'),
+        ('r‘f', 'rf'),
         ('\.*','y'),
+        ('\»"','y'),
         ('\\\\r', 'v'),
         ('n-\'', 'rv'),
         ('\-v','w'),
@@ -17,6 +19,7 @@ def corrector_globalsources(email_text):
         ('\/', 'y'),
         ('><','x'),
         ('|<','k'),
+        ('m/', 'rry'),
         ('|', 'l'),
         ('0', 'o')
     ]
@@ -35,8 +38,11 @@ def tesser_engine(image_file_name, image_resize_procent = 250, corrector=correct
     image_size_y *= image_resize_procent/100
     email_image = email_image.resize((image_size_x, image_size_y))
     email_text = pytesser.image_to_string(email_image)
-    email_text = email_text.strip().replace('0', 'o')
+    email_text = email_text.strip()
     email_text = corrector(email_text)
-    return unicode(email_text)
-#from tst import mail_to_string
-#mail_to_string('/home/sash/Dropbox/ws/globalsourcescom/email.png', 300)
+    try:
+        email_text_unicode = unicode(email_text)
+    except UnicodeDecodeError:
+        print 'can not convert:', email_text,
+        email_text_unicode = ''
+    return email_text_unicode
