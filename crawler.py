@@ -3,7 +3,6 @@
 
 from grab.spider import Spider, Task, Data
 from grab.tools.logs import default_logging
-import urlparse
 import re
 import sys
 import os
@@ -34,8 +33,7 @@ class GlobalsourcesCrawler(Spider):
         Извлекаим ссылку на страницу с категориями компаний
         """
         if not chek_loading(grab.response.body):
-            yield Task('initial', url=task.url, priority=100)
-            return
+            print 'can not innitial parsing on', task.url
 
         category_url = grab.doc.select('//a[contains(text(), "Browse Categories")]').attr('href')
         yield Task('level_1', url=category_url, priority=95)
@@ -46,7 +44,7 @@ class GlobalsourcesCrawler(Spider):
         Получаем ссылки на категории
         """
         if not chek_loading(grab.response.body):
-            yield Task('level_1', url=task.url, refresh_cache=True, priority=90)
+            yield task.clone(refresh_cache=True, priority=90)
             return
 
         for url_level_2 in grab.doc.select('//div[@class="browse-ttl"]/a').attr_list('href'):
@@ -57,7 +55,7 @@ class GlobalsourcesCrawler(Spider):
         Получаем ссылки на подкатегории
         """
         if not chek_loading(grab.response.body):
-            yield Task('level_2', url=task.url, refresh_cache=True, priority=80)
+            yield task.clone(refresh_cache=True, priority=80)
             return
 
         for url_level_3 in grab.doc.select('//div[@class="category-top"]/a').attr_list('href'):
@@ -68,13 +66,12 @@ class GlobalsourcesCrawler(Spider):
         Получаем ссылки на подкатегории
         """
         if not chek_loading(grab.response.body):
-            yield Task('level_3', url=task.url, refresh_cache=True, priority=70)
+            yield task.clone(refresh_cache=True, priority=70)
             return
 
         for url_level_4 in grab.doc.select('//div[@class="category-top"]/a').attr_list('href'):
             url_level_4 = grab.make_url_absolute(url_level_4)
             yield Task('level_4', url=url_level_4, priority=65)
-            print """add url yield Task('level_4', url=url_level_4, priority=65):""", task.url
             self.parsed_url.append(url_level_4)
 
 
@@ -83,7 +80,7 @@ class GlobalsourcesCrawler(Spider):
         Наконец то список продукции где также есть ссылки на карточку компании
         """
         if not chek_loading(grab.response.body):
-            yield Task('level_4', url=task.url, refresh_cache=True, priority=50)
+            yield task.clone(refresh_cache=True, priority=50)
             return
 
         url_level_5_list = grab.doc.select('//a[@class="supplierTit"]').attr_list('href')
@@ -107,95 +104,83 @@ class GlobalsourcesCrawler(Spider):
         Парсим карточку компании
         """
         if not chek_loading(grab.response.body, 'manufacturers'):
-            yield Task('level_5', url=task.url, refresh_cache=True, priority=80)
+            yield task.clone(refresh_cache=True, priority=80)
             return
 
         company_info = grab.doc.select('//div[@class="companyInfo"]').one()
         company = comp_db.Company()
         try:
             company.name = company_info.select('//*[@class="mt10"]').text()
-        except:
-            yield Task('level_5', url=task.url, priority=80)
+        except IndexError:
+            yield task.clone(refresh_cache=True)
             return
 
         company.url_card = task.url
-
-        try:
-            company.site = '; '.join(company_info.select('p[contains(text(), "Homepage Address")]/following-sibling::p[1]').text_list())
-        except:
-            pass
-
-        #try:
-        #    country = grab.doc.select('//p[@class="supplierInfo_main"]/*').text_list()[-1]
-        #    country = country.replace('(mainland)', '').strip()
-        #    company.country = country
-        #except:
-        #    pass
+        company.site = '; '.join(company_info.select('p[contains(text(), "Homepage Address")]/following-sibling::p[1]').text_list())
 
         try:
             country_and_index = ''.join(company_info.select('text()').text_list())
-        except:
+        except IndexError:
             country_and_index = ''
         try:
             company.country, company.address_index = INDEX_PATTERN.search(country_and_index).group(1, 2)
-        except:
+        except AttributeError:
             company.country = country_and_index
 
         try:
             company.city = company_info.select('p[contains(text(), "Tel")]/preceding-sibling::p[2]').text()
-        except:
+        except IndexError:
             pass
 
         try:
             company.province = company_info.select('p[contains(text(), "Tel")]/preceding-sibling::p[1]').text()
-        except:
+        except IndexError:
             pass
 
         try:
             company.address = company_info.select('p[2]').text()
-        except:
+        except IndexError:
             pass
 
         try:
             company.fax = company_info.select('p[contains(text(), "Fax")]').text().replace('Fax:', '').strip()
-        except:
+        except IndexError:
             pass
 
         try:
             company.tel = company_info.select('p[contains(text(), "Tel")]').text().replace('Tel:', '').strip()
-        except:
+        except IndexError:
             pass
 
         try:
             company.about = grab.doc.select('//div[@class="commonBox userContent"]').text().replace('... more >>', '')
-        except:
+        except IndexError:
             pass
 
         try:
             company.email_img_url = company_info.select('p[contains(text(), "-mail")]/img').attr('src')
             company.email_img_url = grab.make_url_absolute(company.email_img_url)
-        except:
+        except IndexError:
             pass
 
         try:
             company.person = grab.doc.select('//div[@class="companyInfo"][2]/p[2]').text()
-        except:
+        except IndexError:
             pass
 
         try:
             company.stars = grab.doc.select('//p[@class="supplierInfo_main"]/a').text()
-        except:
+        except IndexError:
             pass
 
         company.importer = 'Import' in grab.doc.select('//div[@class="CoProfile"]').text(smart=True)
         company.exporter = 'Export' in grab.doc.select('//div[@class="CoProfile"]').text(smart=True)
 
+        #pdb.set_trace()
+        if company.email_img_url:
+            yield Task('ocr_image', url=company.email_img_url, priority=35)
         comp_db.session.add(company)
         comp_db.session.commit()
-
-        yield Task('ocr_image', url=company.email_img_url, priority=35)
-
-
 
     def task_ocr_image(self, grab, task):
         """
@@ -205,17 +190,15 @@ class GlobalsourcesCrawler(Spider):
         grab.response.save(email_for_ocr_path)
         comp = comp_db.session.query(comp_db.Company).filter_by(email_img_url=task.url)[0]
         comp.email = ocr.mailimg_to_str.tesser_engine(email_for_ocr_path)
+        if not comp.email:
+            print task.url
         comp_db.session.add(comp)
         comp_db.session.commit()
 
 def start_parsing():
     default_logging(grab_log=config.GRAB_LOG, network_log=config.NETWORK_LOG)
     bot = GlobalsourcesCrawler(thread_number=config.THREAD_NUMBER)
-    #bot.setup_cache(engine='tokyo_cabinet', database=config.TOKYO_CABINET_DB)
-    #bot.setup_queue('mysql', database='grab', use_compression=True, user='grab', passwd='grab777')
     bot.setup_cache('mysql', database=config.MYSQL_DATABASE, use_compression=True, user=config.MYSQL_USER, passwd=config.MYSQL_PASSWORD)
-    #if config.DEBUG:
-    #     bot.setup_grab(log_dir=config.LOG_DIR)
     bot.load_proxylist(config.PROXY_LIST, 'text_file', proxy_type='http')
     try:
         bot.run()
