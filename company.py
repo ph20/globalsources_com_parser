@@ -20,6 +20,7 @@ engine = create_engine(sql_path, echo=False)
 
 Base = declarative_base()
 
+
 class Company(Base):
     __tablename__ = 'company'
     id = Column(Integer, primary_key=True)
