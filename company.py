@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import config
 import os
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Boolean
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-import config
 
 sql_path = "sqlite:///{0}".format(os.path.join(config.DEFAULT_DIR, config.SQLITE_DB))
 # mysql://username:password@server/db
@@ -58,7 +59,7 @@ class Company(Base):
                  importer=False,
                  email='',
                  email_img_url=''
-    ):
+                 ):
         self.name = name
         self.about = about
         self.url_card = url_card
