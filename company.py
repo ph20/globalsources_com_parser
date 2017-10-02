@@ -87,6 +87,7 @@ class Company(Base):
                                                self.address_index
                                                )
 
+
 metadata = Base.metadata
 metadata.create_all(engine)
 
