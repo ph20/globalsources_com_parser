@@ -59,7 +59,7 @@ class Company(Base):
                  importer=False,
                  email='',
                  email_img_url=''
-    ):
+                 ):
         self.name = name
         self.about = about
         self.url_card = url_card
